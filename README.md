@@ -9,7 +9,6 @@
 
 ```
 
-
 ```bash
 
 # Insert records
@@ -22,12 +21,12 @@ curl -X POST http://localhost:8000/v1/students \
 }'
 
 # Production
-curl -X POST https://student-api-jie2.onrender.com/v1/students \
+curl -X POST https://student-api-v2.onrender.com/v1/students \
 -H "Content-Type: application/json" \
 -d '{
-    "name":"Alice",
-    "age":23,
-    "course":"AI"
+    "name":"Emmanuel",
+    "age":53,
+    "course":"Python and AI"
 }'
 
 # GET Student by ID

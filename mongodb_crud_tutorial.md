@@ -196,3 +196,69 @@ collection.create_index("name")
 - Always validate input in real applications
 
 ---
+
+# Assignment
+🏦 Assignment: Building a Simple Banking System with PyMongo
+
+🎯 Objective
+
+Learn how to use PyMongo to:
+
+Connect to MongoDB
+Create a database and collection
+Perform full CRUD operations
+
+📘 Scenario
+
+You are building a basic banking system where customer accounts are stored in a database.
+
+Each customer account should include:
+
+account_number (string)
+name (string)
+balance (float)
+account_type (e.g., “savings”, “checking”)
+
+🧱 Tasks
+
+1. Setup
+
+Install PyMongo
+Connect to your local MongoDB instance
+
+2. Create Database and Collection
+
+Create a database called: bank_db
+Create a collection called: accounts
+
+3. Insert Data (CREATE)
+
+Insert at least 5 customer accounts.
+{
+"account_number": "ACC1001",
+"name": "John Doe",
+"balance": 1500.0,
+"account_type": "savings"
+}
+
+
+4. Read Data (READ)
+
+Write queries to:
+
+Retrieve all accounts
+Find one account by account_number
+Find all accounts with balance greater than 1000
+
+5. Update Data (UPDATE)
+
+Implement:
+
+Deposit money into an account (increase balance)
+Withdraw money from an account (decrease balance)
+Change account type (e.g., savings → checking)
+
+6. Delete Data (DELETE)
+
+Delete one account using account_number
+Delete all accounts with balance less than 500

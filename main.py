@@ -55,6 +55,7 @@ class Student(BaseModel):
 
 # ---------------------------
 # Helper function
+# {"_id":"69f146ad284889fb5dd7bd2a","name":"Trump","age":99,"course":"War"}
 # ---------------------------
 def student_serializer(student) -> dict:
     return {
@@ -67,6 +68,7 @@ def student_serializer(student) -> dict:
 
 # ---------------------------
 # Root endpoint
+# https://student-api-v2.onrender.com
 # ---------------------------
 @app.get("/")
 def root():
@@ -79,6 +81,7 @@ def root():
 
 # ---------------------------
 # GET all students
+# https://student-api-v2.onrender.com/v1/students
 # ---------------------------
 @app.get("/v1/students")
 def get_students():
@@ -88,6 +91,7 @@ def get_students():
 
 # ---------------------------
 # POST create student
+# https://student-api-v2.onrender.com/v1/students
 # ---------------------------
 @app.post("/v1/students")
 def create_student(student: Student):
@@ -98,6 +102,7 @@ def create_student(student: Student):
 
 # ---------------------------
 # PUT update student
+# https://student-api-v2.onrender.com/v1/students/69f949faf90e3610e6ff72d7
 # ---------------------------
 @app.put("/v1/students/{student_id}")
 def update_student(student_id: str, student: Student):
@@ -115,6 +120,7 @@ def update_student(student_id: str, student: Student):
 
 # ---------------------------
 # GET one student by ID
+# https://student-api-v2.onrender.com/v1/students/69f949faf90e3610e6ff72d7
 # ---------------------------
 @app.get("/v1/students/{student_id}")
 def get_student(student_id: str):
@@ -128,6 +134,7 @@ def get_student(student_id: str):
 
 # ---------------------------
 # DELETE student
+# https://student-api-v2.onrender.com/v1/students/69f949faf90e3610e6ff72d7
 # ---------------------------
 @app.delete("/v1/students/{student_id}")
 def delete_student(student_id: str):
