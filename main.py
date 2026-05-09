@@ -1,23 +1,22 @@
-import os
-import uvicorn
-from bson import ObjectId
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+from bson import ObjectId
+import os
+import secrets
+import uvicorn
+from dotenv import load_dotenv
 
 load_dotenv(".env", override=True)
 
 app = FastAPI()
 
-# ---------------------------
-# Connect to REMOTE MongoDB
-# ---------------------------
+# -----------------------------
+# Database
+# -----------------------------
 MONGO_URI = os.getenv("MONGO_URI")
-
-# Create a new client and connect to the server
-# tls=True, tlsCAFile=certifi.where()
 client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
 
 # Send a ping to confirm a successful connection
@@ -27,127 +26,145 @@ try:
 except Exception as e:
     print(e)
 
-# ---------------------------
-# Connect to local MongoDB
-# ---------------------------
-
-# MONGO_URI = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/?directConnection=true")
-# client = MongoClient(MONGO_URI)
-
-
 db = client["school_db"]
-students_collection = db["students"]
+students = db["students"]
+users = db["users"]
 
 # Force DB creation
 if "students" not in db.list_collection_names():
-    students_collection.insert_one({"init": True})
-    students_collection.delete_one({"init": True})
+    students.insert_one({"init": True})
+    students.delete_one({"init": True})
+
+# Force DB creation
+if "users" not in db.list_collection_names():
+    users.insert_one({"init": True})
+    users.delete_one({"init": True})
+# -----------------------------
+# Security
+# -----------------------------
+security = HTTPBearer()
 
 
-# ---------------------------
-# Pydantic Model
-# ---------------------------
+# -----------------------------
+# Models
+# -----------------------------
 class Student(BaseModel):
     name: str
     age: int
     course: str
 
 
-# ---------------------------
-# Helper function
-# {"_id":"69f146ad284889fb5dd7bd2a","name":"Trump","age":99,"course":"War"}
-# ---------------------------
-def student_serializer(student) -> dict:
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+# -----------------------------
+# Helpers
+# -----------------------------
+def serialize(student):
     return {
         "id": str(student["_id"]),
         "name": student["name"],
         "age": student["age"],
-        "course": student["course"]
+        "course": student["course"],
     }
 
 
-# ---------------------------
-# Root endpoint
-# https://student-api-v2.onrender.com
-# ---------------------------
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+
+    user = users.find_one({"token": token})
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    return user
+
+
+# -----------------------------
+# Public route
+# -----------------------------
 @app.get("/")
 def root():
     return {
-        "message": "Welcome to the Student API",
-        "version": "1.0",
-        "docs": "/docs"
+        "message": "Welcome to the Secure Student API",
+        "version": "0.1.0",
+        "docs": "/docs",
     }
 
 
-# ---------------------------
-# GET all students
-# https://student-api-v2.onrender.com/v1/students
-# ---------------------------
+# -----------------------------
+# Login route
+# -----------------------------
+@app.post("/login")
+def login(data: LoginRequest):
+    user = users.find_one({"username": data.username, "password": data.password})
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    new_token = secrets.token_hex(16)
+
+    users.update_one({"_id": user["_id"]}, {"$set": {"token": new_token}})
+
+    return {"access_token": new_token, "token_type": "bearer"}
+
+
+# -----------------------------
+# Protected routes
+# -----------------------------
 @app.get("/v1/students")
-def get_students():
-    students = students_collection.find()
-    return [student_serializer(student) for student in students]
+def get_students(user=Depends(verify_token)):
+    return [serialize(s) for s in students.find()]
 
 
-# ---------------------------
-# POST create student
-# https://student-api-v2.onrender.com/v1/students
-# ---------------------------
 @app.post("/v1/students")
-def create_student(student: Student):
-    result = students_collection.insert_one(student.model_dump())
-    new_student = students_collection.find_one({"_id": result.inserted_id})
-    return student_serializer(new_student)
+def create_student(student: Student, user=Depends(verify_token)):
+    result = students.insert_one(student.dict())
+    new_student = students.find_one({"_id": result.inserted_id})
+    return serialize(new_student)
 
 
-# ---------------------------
-# PUT update student
-# https://student-api-v2.onrender.com/v1/students/69f949faf90e3610e6ff72d7
-# ---------------------------
 @app.put("/v1/students/{student_id}")
-def update_student(student_id: str, student: Student):
-    result = students_collection.update_one(
-        {"_id": ObjectId(student_id)},
-        {"$set": student.model_dump()}
+def update_student(student_id: str, student: Student, user=Depends(verify_token)):
+    result = students.update_one(
+        {"_id": ObjectId(student_id)}, {"$set": student.dict()}
     )
 
-    if result.modified_count == 0:
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    updated_student = students_collection.find_one({"_id": ObjectId(student_id)})
-    return student_serializer(updated_student)
+    updated = students.find_one({"_id": ObjectId(student_id)})
+    return serialize(updated)
 
 
-# ---------------------------
-# GET one student by ID
-# https://student-api-v2.onrender.com/v1/students/69f949faf90e3610e6ff72d7
-# ---------------------------
 @app.get("/v1/students/{student_id}")
-def get_student(student_id: str):
-    student = students_collection.find_one({"_id": ObjectId(student_id)})
+def get_student(student_id: str, user=Depends(verify_token)):
+    try:
+        student = students.find_one({"_id": ObjectId(student_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid student ID")
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    return student_serializer(student)
+    return serialize(student)
 
 
-# ---------------------------
-# DELETE student
-# https://student-api-v2.onrender.com/v1/students/69f949faf90e3610e6ff72d7
-# ---------------------------
 @app.delete("/v1/students/{student_id}")
-def delete_student(student_id: str):
-    result = students_collection.delete_one({"_id": ObjectId(student_id)})
+def delete_student(student_id: str, user=Depends(verify_token)):
+    result = students.delete_one({"_id": ObjectId(student_id)})
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    return {"message": "Student deleted successfully"}
+    return {"message": "Deleted successfully"}
 
 
-# ---------------------------
-# Run application
-# ---------------------------
+# -----------------------------
+# Local run
+# -----------------------------
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=os.getenv("PORT", 8000))
+    port = int(os.getenv("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
