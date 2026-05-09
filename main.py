@@ -88,7 +88,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 @app.get("/")
 def root():
     return {
-        "message": "Welcome to the Secure Student API",
+        "message": "Welcome to the Secure Student API by Manny",
         "version": "0.1.0",
         "docs": "/docs",
     }
@@ -114,19 +114,19 @@ def login(data: LoginRequest):
 # -----------------------------
 # Protected routes
 # -----------------------------
-@app.get("/v1/students")
+@app.get("/v2/students")
 def get_students(user=Depends(verify_token)):
     return [serialize(s) for s in students.find()]
 
 
-@app.post("/v1/students")
+@app.post("/v2/students")
 def create_student(student: Student, user=Depends(verify_token)):
     result = students.insert_one(student.dict())
     new_student = students.find_one({"_id": result.inserted_id})
     return serialize(new_student)
 
 
-@app.put("/v1/students/{student_id}")
+@app.put("/v2/students/{student_id}")
 def update_student(student_id: str, student: Student, user=Depends(verify_token)):
     result = students.update_one(
         {"_id": ObjectId(student_id)}, {"$set": student.dict()}
@@ -139,7 +139,7 @@ def update_student(student_id: str, student: Student, user=Depends(verify_token)
     return serialize(updated)
 
 
-@app.get("/v1/students/{student_id}")
+@app.get("/v2/students/{student_id}")
 def get_student(student_id: str, user=Depends(verify_token)):
     try:
         student = students.find_one({"_id": ObjectId(student_id)})
@@ -152,7 +152,7 @@ def get_student(student_id: str, user=Depends(verify_token)):
     return serialize(student)
 
 
-@app.delete("/v1/students/{student_id}")
+@app.delete("/v2/students/{student_id}")
 def delete_student(student_id: str, user=Depends(verify_token)):
     result = students.delete_one({"_id": ObjectId(student_id)})
 
